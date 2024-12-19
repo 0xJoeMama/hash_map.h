@@ -1,0 +1,3 @@
+[submodule "dynamic_array.h"]
+	path = dynamic_array.h
+	url = git@github.com:0xJoeMama/dynamic_array.h.git
