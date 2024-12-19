@@ -19,7 +19,6 @@
     uint64_t hash;                                                             \
   } KVPair_t(key, value);                                                      \
                                                                                \
-  KVPair_t(key, value) a;                                                      \
   DA_DECLARE(KVPair_t(key, value));                                            \
                                                                                \
   typedef uint64_t (*HashFunc_t(key))(key *);                                  \
@@ -32,12 +31,46 @@
   };                                                                           \
                                                                                \
   hm_function(int, hm_init, key, value, struct HashMap(key, value) * hm,       \
-              size_t initial_cap);                                             \
+              size_t initial_cap, HashFunc_t(key) hash, EqFunc_t(key) eq);     \
   hm_function(int, hm_put, key, value, struct HashMap(key, value) * hm, key k, \
               value v);                                                        \
   hm_function(value *, hm_get, key, value, struct HashMap(key, value) * hm,    \
               key * k);                                                        \
   hm_function(void, hm_deinit, key, value, struct HashMap(key, value) * hm);   \
+  typedef struct HashMap(key, value) HashMap_t(key, value)
+
+#define HM_IMPL(key, value)                                                    \
+  typedef struct {                                                             \
+    key k;                                                                     \
+    value v;                                                                   \
+    uint64_t hash;                                                             \
+  } KVPair_t(key, value);                                                      \
+                                                                               \
+  DA_IMPL(KVPair_t(key, value));                                               \
+                                                                               \
+  typedef uint64_t (*HashFunc_t(key))(key *);                                  \
+  typedef int (*EqFunc_t(key))(key *, key *);                                  \
+                                                                               \
+  struct HashMap(key, value) {                                                 \
+    DynamicArray_t(KVPair_t(key, value)) buckets;                              \
+    HashFunc_t(key) hash;                                                      \
+    EqFunc_t(key) eq;                                                          \
+  };                                                                           \
+                                                                               \
+  hm_function(int, hm_init, key, value, struct HashMap(key, value) * hm,       \
+              size_t initial_cap, HashFunc_t(key) hash, EqFunc_t(key) eq) {    \
+    if (!da_init(&hm->buckets, initial_cap, KVPair_t(key, value)))             \
+      return 0;                                                                \
+    hm->hash = hash;                                                           \
+    hm->eq = eq;                                                               \
+    return 1;                                                                  \
+  }                                                                            \
+                                                                               \
+  hm_function(void, hm_deinit, key, value, struct HashMap(key, value) * hm) {  \
+    /* delegate to the bucket array */                                         \
+    da_deinit(&hm->buckets, KVPair_t(key, value));                             \
+  }                                                                            \
+                                                                               \
   typedef struct HashMap(key, value) HashMap_t(key, value)
 
 #define HM_H
