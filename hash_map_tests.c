@@ -16,11 +16,14 @@ int main() {
 
   hm_put_char_int(&map, 'a', 42);
   hm_put_char_int(&map, 'b', 42);
+  hm_put_char_int(&map, 107, 44);
   hm_put_char_int(&map, 'a', 43);
 
   char c = 'a';
   printf("a -> %d\n", *hm_get_char_int(&map, &c));
   c++;
+  printf("b -> %d\n", *hm_get_char_int(&map, &c));
+  c = 107;
   printf("b -> %d\n", *hm_get_char_int(&map, &c));
 
   hm_deinit_char_int(&map);
