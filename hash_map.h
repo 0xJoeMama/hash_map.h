@@ -45,6 +45,8 @@
               key * k);                                                        \
   hm_function(void, hm_deinit, key, value, struct HashMap(key, value) * hm);   \
   hm_function(int, hm_grow, key, value, struct HashMap(key, value) * hm);      \
+  hm_function(int, hm_remove, key, value, struct HashMap(key, value) * hm,     \
+              key * k, value * v);                                             \
                                                                                \
   hm_function(KVPair_t(key, value) *, hm_get_entry_raw, key, value,            \
               struct HashMap(key, value) * hm, key * k, uint64_t hash);        \
@@ -145,7 +147,7 @@
     uint64_t hash = hm->hash(&k);                                              \
     KVPair_t(key, value) *target_loc =                                         \
         hm_function_call(hm_get_entry_raw, key, value, hm, &k, hash);          \
-    if (target_loc != NULL) {                                                  \
+    if (target_loc) {                                                          \
       target_loc->occupied = 1;                                                \
       target_loc->k = k;                                                       \
       target_loc->v = v;                                                       \
@@ -163,13 +165,29 @@
     return hm_function_call(hm_put, key, value, hm, k, v);                     \
   }                                                                            \
                                                                                \
+  hm_function(int, hm_remove, key, value, struct HashMap(key, value) * hm,     \
+              key * k, value * v) {                                            \
+    uint64_t hash = hm->hash(k);                                               \
+    KVPair_t(key, value) *entry =                                              \
+        hm_function_call(hm_get_entry_raw, key, value, hm, k, hash);           \
+                                                                               \
+    if (!entry || !entry->occupied)                                            \
+      return 0;                                                                \
+                                                                               \
+    memcpy(v, &entry->v, sizeof(value));                                       \
+    entry->occupied = 0;                                                       \
+    hm->len--;                                                                 \
+                                                                               \
+    return 1;                                                                  \
+  }                                                                            \
+                                                                               \
   hm_function(value *, hm_get, key, value, struct HashMap(key, value) * hm,    \
               key * k) {                                                       \
     uint64_t hash = hm->hash(k);                                               \
                                                                                \
     KVPair_t(key, value) *target_loc =                                         \
         hm_function_call(hm_get_entry_raw, key, value, hm, k, hash);           \
-    if (target_loc == NULL)                                                    \
+    if (!target_loc || !target_loc->occupied)                                  \
       return NULL;                                                             \
                                                                                \
     return &target_loc->v;                                                     \
