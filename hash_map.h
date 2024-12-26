@@ -195,5 +195,14 @@
                                                                                \
   typedef struct HashMap(key, value) HashMap_t(key, value)
 
+#define hm_init(hm, cap, hash, eq, key, value)                                 \
+  (hm_function_call(hm_init, key, value, hm, cap, hash, eq))
+#define hm_put(hm, k, v, key, value)                                           \
+  (hm_function_call(hm_put, key, value, hm, k, v))
+#define hm_get(hm, k, key, value) (hm_function_call(hm_get, key, value, hm, k))
+#define hm_remove(hm, k, v_ptr, key, value)                                    \
+  (hm_function_call(hm_remove, key, value, hm, k, v_ptr))
+#define hm_deinit(hm, key, value) (hm_function_call(hm_deinit, key, value, hm))
+
 #define HM_H
 #endif

@@ -12,12 +12,12 @@ int char_eq(char *a, char *b) { return *a == *b; }
 int main() {
   HashMap_t(char, int) map;
   // temporary names bc macros take too long to write
-  if (!hm_init_char_int(&map, 10, hash_char, char_eq))
+  if (!hm_init(&map, 10, hash_char, char_eq, char, int))
     return 1;
 
   for (int i = 0; i < 256; i++) {
-    if (!hm_put_char_int(&map, i, i)) {
-      hm_deinit_char_int(&map);
+    if (!hm_put(&map, i, i, char, int)) {
+      hm_deinit(&map, char, int);
       return 1;
     }
   }
@@ -25,20 +25,21 @@ int main() {
     char c = i;
     printf("%c -> %d\n", i, *hm_get_char_int(&map, &c));
     int c_p;
-    if (!hm_remove_char_int(&map, &c, &c_p)) {
-      hm_deinit_char_int(&map);
+    if (!hm_remove(&map, &c, &c_p, char, int)) {
+      hm_deinit(&map, char, int);
       return 1;
     }
-    assert(hm_get_char_int(&map, &c) == NULL && "woopsie");
+
+    assert(hm_get(&map, &c, char, int) == NULL && "woopsie");
   }
 
   printf("cap = %zu, len = %zu\n", map.cap, map.len);
-  hm_put_char_int(&map, 'a', 32);
+  hm_put(&map, 'a', 32, char, int);
   char c = 'a';
-  *hm_get_char_int(&map, &c) += 10;
-  printf("%c -> %d\n", c, *hm_get_char_int(&map, &c));
+  *hm_get(&map, &c, char, int) += 10;
+  printf("%c -> %d\n", c, *hm_get(&map, &c, char, int));
 
-  hm_deinit_char_int(&map);
+  hm_deinit(&map, char, int);
 
   return 0;
 }
