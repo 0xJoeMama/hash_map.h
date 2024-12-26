@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+int foo();
+
 HM_IMPL(char, int);
 
 uint64_t hash_char(char *c) { return *c; }
@@ -40,6 +42,7 @@ int main() {
   printf("%c -> %d\n", c, *hm_get(&map, &c, char, int));
 
   hm_deinit(&map, char, int);
+  foo();
 
   return 0;
 }
