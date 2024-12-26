@@ -14,17 +14,18 @@ int main() {
   if (!hm_init_char_int(&map, 10, hash_char, char_eq))
     return 1;
 
-  hm_put_char_int(&map, 'a', 42);
-  hm_put_char_int(&map, 'b', 42);
-  hm_put_char_int(&map, 107, 44);
-  hm_put_char_int(&map, 'a', 43);
+  for (int i = 0; i < 256; i++) {
+    if (!hm_put_char_int(&map, i, i)) {
+      hm_deinit_char_int(&map);
+      return 1;
+    }
+  }
+  for (int i = 0; i < 256; i++) {
+    char c = i;
+    printf("%c -> %d\n", i, *hm_get_char_int(&map, &c));
+  }
 
-  char c = 'a';
-  printf("a -> %d\n", *hm_get_char_int(&map, &c));
-  c++;
-  printf("b -> %d\n", *hm_get_char_int(&map, &c));
-  c = 107;
-  printf("b -> %d\n", *hm_get_char_int(&map, &c));
+  printf("cap = %zu, len = %zu\n", map.cap, map.len);
 
   hm_deinit_char_int(&map);
 

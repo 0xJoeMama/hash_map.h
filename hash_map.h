@@ -1,4 +1,5 @@
 #ifndef HM_H
+#include <assert.h>
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -44,6 +45,9 @@
               key * k);                                                        \
   hm_function(void, hm_deinit, key, value, struct HashMap(key, value) * hm);   \
   hm_function(int, hm_grow, key, value, struct HashMap(key, value) * hm);      \
+                                                                               \
+  hm_function(KVPair_t(key, value) *, hm_get_entry_raw, key, value,            \
+              struct HashMap(key, value) * hm, key * k, uint64_t hash);        \
   typedef struct HashMap(key, value) HashMap_t(key, value)
 
 #define HM_IMPL(key, value)                                                    \
@@ -89,6 +93,22 @@
   hm_function(int, hm_put, key, value, struct HashMap(key, value) * hm, key k, \
               value v);                                                        \
                                                                                \
+  hm_function(KVPair_t(key, value) *, hm_get_entry_raw, key, value,            \
+              struct HashMap(key, value) * hm, key * k, uint64_t hash) {       \
+    uint64_t reduced_hash = hash % hm->cap;                                    \
+    uint64_t pos = reduced_hash;                                               \
+    do {                                                                       \
+      KVPair_t(char, int) *curr_entry = hm->buckets + pos;                     \
+                                                                               \
+      if (!curr_entry->occupied || hm->eq(&curr_entry->k, k))                  \
+        return curr_entry;                                                     \
+                                                                               \
+      pos = pos + 1 != hm->cap ? pos + 1 : 0;                                  \
+    } while (pos != reduced_hash);                                             \
+                                                                               \
+    return NULL;                                                               \
+  }                                                                            \
+                                                                               \
   hm_function(int, hm_grow, key, value, struct HashMap(key, value) * hm) {     \
     KVPair_t(key, value) *new_buckets =                                        \
         calloc(hm->cap * FUDGE, sizeof(KVPair_t(key, value)));                 \
@@ -103,12 +123,15 @@
     for (KVPair_t(key, value) *bucket = hm->buckets;                           \
          bucket < hm->buckets + hm->cap; bucket++) {                           \
       if (bucket->occupied) {                                                  \
-        if (!hm_function_call(hm_put, key, value, hm, bucket->k, bucket->v)) { \
-          hm_function_call(hm_deinit, key, value, &new_map);                   \
-          return 0;                                                            \
-        }                                                                      \
+        uint64_t hash = bucket->hash;                                          \
+        KVPair_t(key, value) *new_loc = hm_function_call(                      \
+            hm_get_entry_raw, key, value, &new_map, &bucket->k, hash);         \
+        assert(new_loc != NULL && "how did we get here?");                     \
+        memcpy(new_loc, bucket, sizeof(KVPair_t(key, value)));                 \
       }                                                                        \
     }                                                                          \
+                                                                               \
+    new_map.len = hm->len;                                                     \
                                                                                \
     hm_function_call(hm_deinit, key, value, hm);                               \
     memcpy(hm, &new_map, sizeof(struct HashMap(key, value)));                  \
@@ -116,39 +139,19 @@
     return 1;                                                                  \
   }                                                                            \
                                                                                \
+  /* TODO: make this return the old value in case of override */               \
   hm_function(int, hm_put, key, value, struct HashMap(key, value) * hm, key k, \
               value v) {                                                       \
     uint64_t hash = hm->hash(&k);                                              \
-    uint64_t initial_pos = hash % hm->cap;                                     \
-    uint64_t reduced_hash = initial_pos;                                       \
-    while (1) {                                                                \
-      KVPair_t(key, value) *target_entry = hm->buckets + reduced_hash;         \
-      /* a free bucket allows us to just insert the data into the array        \
-       * without any problems */                                               \
-      if (!target_entry->occupied) {                                           \
-        /* TODO: handle this better with custom copy of memcpy */              \
-        target_entry->k = k;                                                   \
-        target_entry->v = v;                                                   \
-        target_entry->hash = hash;                                             \
-        target_entry->occupied = 1;                                            \
-        hm->len++;                                                             \
-        return 1;                                                              \
-      }                                                                        \
-                                                                               \
-      /* if the key is equal to the old key and the hashes match, just replace \
-       * the value in that bucket */                                           \
-      if (hm->eq(&k, &target_entry->k)) {                                      \
-        target_entry->v = v;                                                   \
-        /* hm len remains constant */                                          \
-        return 1;                                                              \
-      }                                                                        \
-                                                                               \
-      reduced_hash++;                                                          \
-      if (reduced_hash == hm->cap)                                             \
-        reduced_hash = 0;                                                      \
-                                                                               \
-      if (reduced_hash == initial_pos)                                         \
-        break;                                                                 \
+    KVPair_t(key, value) *target_loc =                                         \
+        hm_function_call(hm_get_entry_raw, key, value, hm, &k, hash);          \
+    if (target_loc != NULL) {                                                  \
+      target_loc->occupied = 1;                                                \
+      target_loc->k = k;                                                       \
+      target_loc->v = v;                                                       \
+      target_loc->hash = hash;                                                 \
+      hm->len++;                                                               \
+      return 1;                                                                \
     }                                                                          \
                                                                                \
     /* this means we need to resize the map */                                 \
@@ -156,19 +159,20 @@
       /* if resizing fails it means we cannot insert the key */                \
       return 0;                                                                \
                                                                                \
+    /* call ourselves with the resized map */                                  \
     return hm_function_call(hm_put, key, value, hm, k, v);                     \
   }                                                                            \
                                                                                \
   hm_function(value *, hm_get, key, value, struct HashMap(key, value) * hm,    \
               key * k) {                                                       \
     uint64_t hash = hm->hash(k);                                               \
-    uint64_t reduced_hash = hash % hm->cap;                                    \
-    KVPair_t(key, value) *target_entry = hm->buckets + reduced_hash;           \
                                                                                \
-    if (!target_entry->occupied || !hm->eq(&target_entry->k, k))               \
+    KVPair_t(key, value) *target_loc =                                         \
+        hm_function_call(hm_get_entry_raw, key, value, hm, k, hash);           \
+    if (target_loc == NULL)                                                    \
       return NULL;                                                             \
                                                                                \
-    return &target_entry->v;                                                   \
+    return &target_loc->v;                                                     \
   }                                                                            \
                                                                                \
   typedef struct HashMap(key, value) HashMap_t(key, value)
