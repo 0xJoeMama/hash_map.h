@@ -1,2 +1,4 @@
 hash_map_tests
 *.o
+.cache
+compile_commands.json

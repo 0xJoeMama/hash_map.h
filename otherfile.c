@@ -2,7 +2,7 @@
 
 HM_DECLARE(char, int);
 
-int foo() {
+int foo(void) {
   HashMap_t(char, int) map;
   // temporary names bc macros take too long to write
   if (!hm_init_char_int(&map, 10, NULL, NULL))

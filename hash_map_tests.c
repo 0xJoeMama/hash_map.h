@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-int foo();
+int foo(void);
 
 HM_IMPL(char, int);
 
@@ -13,7 +13,7 @@ int char_eq(char *a, char *b) { return *a == *b; }
 
 HM_IMPL(char, HashMap_t(char, int));
 
-int main() {
+int main(void) {
   HashMap_t(char, int) map;
   // temporary names bc macros take too long to write
   if (!hm_init(char, int)(&map, 10, hash_char, char_eq))

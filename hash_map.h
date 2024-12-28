@@ -12,8 +12,6 @@
 #define HashMap(key, value) hm_declare_type(key, value)
 #define HashMap_t(key, value) hm_declare_type_long(key, value)
 #define KVPair_t(key, value) KVPair_##key##_##value##_t
-#define HashFunc_t(key) Hash_##key
-#define EqFunc_t(key) Eq_##key
 #define hm_function(ret_type, name, key, value, ...)                           \
   ret_type name##_##key##_##value(__VA_ARGS__)
 
@@ -27,19 +25,17 @@
     int occupied;                                                              \
   } KVPair_t(key, value);                                                      \
                                                                                \
-  typedef uint64_t (*HashFunc_t(key))(key *);                                  \
-  typedef int (*EqFunc_t(key))(key *, key *);                                  \
-                                                                               \
   struct HashMap(key, value) {                                                 \
     KVPair_t(key, value) * buckets;                                            \
-    HashFunc_t(key) hash;                                                      \
-    EqFunc_t(key) eq;                                                          \
+    uint64_t (*hash)(key *);                                                   \
+    int (*eq)(key *, key *);                                                   \
     size_t cap;                                                                \
     size_t len;                                                                \
   };                                                                           \
                                                                                \
   hm_function(int, hm_init, key, value, struct HashMap(key, value) * hm,       \
-              size_t initial_cap, HashFunc_t(key) hash, EqFunc_t(key) eq);     \
+              size_t initial_cap, uint64_t (*hash)(key *),                     \
+              int (*eq)(key *, key *));                                        \
   hm_function(int, hm_put, key, value, struct HashMap(key, value) * hm, key k, \
               value v);                                                        \
   hm_function(value *, hm_get, key, value, struct HashMap(key, value) * hm,    \
@@ -61,19 +57,17 @@
     int occupied;                                                              \
   } KVPair_t(key, value);                                                      \
                                                                                \
-  typedef uint64_t (*HashFunc_t(key))(key *);                                  \
-  typedef int (*EqFunc_t(key))(key *, key *);                                  \
-                                                                               \
   struct HashMap(key, value) {                                                 \
     KVPair_t(key, value) * buckets;                                            \
-    HashFunc_t(key) hash;                                                      \
-    EqFunc_t(key) eq;                                                          \
+    uint64_t (*hash)(key *);                                                   \
+    int (*eq)(key *, key *);                                                   \
     size_t cap;                                                                \
     size_t len;                                                                \
   };                                                                           \
                                                                                \
   hm_function(int, hm_init, key, value, struct HashMap(key, value) * hm,       \
-              size_t initial_cap, HashFunc_t(key) hash, EqFunc_t(key) eq) {    \
+              size_t initial_cap, uint64_t (*hash)(key *),                     \
+              int (*eq)(key *, key *)) {                                       \
     hm->buckets = (KVPair_t(key, value) *)calloc(                              \
         initial_cap, sizeof(KVPair_t(key, value)));                            \
                                                                                \
